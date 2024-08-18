@@ -33,13 +33,13 @@ To get started with this project, follow the steps below:
 2. Navigate to the project directory:
 
    ```bash
-   cd calendar-application
+   cd direnctory_name
    ```
 
 3. Install the dependencies:
 
    ```bash
-   npm install
+   npm run dev
    ```
 
 ### Usage
