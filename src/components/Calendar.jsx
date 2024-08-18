@@ -16,8 +16,6 @@ const Calendar = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedEvent, setEditedEvent] = useState({});
   const [showMonthPanel, setShowMonthPanel] = useState(false);
   const [showYearPanel, setShowYearPanel] = useState(false);
   const calendarRef = useRef(null);
@@ -49,6 +47,7 @@ const Calendar = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        console.log("Clicked outside"); // Debugging
         setShowMonthPanel(false);
         setShowYearPanel(false);
       }
@@ -59,31 +58,6 @@ const Calendar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const closeModal = () => {
-    setModalIsOpen(false);
-    setIsEditing(false);
-    setEditedEvent({});
-    setCurrentEvent(null);
-    setSelectedDate(null);
-  };
-
-  const toggleModal = (day) => {
-    if (
-      selectedDate &&
-      day &&
-      selectedDate.toDateString() === day.toDateString()
-    ) {
-      // If the same date is clicked again, close the modal
-      closeModal();
-    } else {
-      setSelectedDate(day);
-      setCurrentEvent(null);
-      setIsEditing(false);
-      setEditedEvent({});
-      setModalIsOpen(true);
-    }
-  };
 
   const firstDayOfMonth = new Date(
     currentDate.getFullYear(),
@@ -136,6 +110,10 @@ const Calendar = () => {
     setView(viewType);
   };
 
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
   const generateCalendar = () => {
     const calendarDays = [];
     let day = firstDayOfMonth;
@@ -175,110 +153,78 @@ const Calendar = () => {
   };
 
   const getEventsForDate = (date) => {
-    return (events[date.toDateString()] || [])
-      .filter((event) => {
-        if (filterCategory === "all") {
-          return true;
-        }
-        return event.category === filterCategory;
-      })
-      .filter((event) =>
-        event.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    const dateKey = date.toDateString();
+    let dateEvents = events[dateKey] || [];
+    dateEvents = dateEvents.filter(
+      (event) =>
+        event.description.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (filterCategory === "all" || event.category === filterCategory)
+    );
+    return dateEvents;
   };
 
   const handleDayClick = (day) => {
-    toggleModal(day);
+    if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
+      setModalIsOpen(false);
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(day);
+      const dateKey = day.toDateString();
+      if (events[dateKey] && events[dateKey].length > 0) {
+        setModalIsOpen(true);
+      }
+    }
   };
 
   const handleAddEvent = () => {
-    if (!selectedDate || !newEvent) return;
-
+    if (!newEvent) return;
     const dateKey = selectedDate.toDateString();
-    const newEvents = { ...events };
-
-    if (!newEvents[dateKey]) {
-      newEvents[dateKey] = [];
-    }
-
-    newEvents[dateKey].push({
-      description: newEvent,
-      recurrence,
-      category,
-      reminder: reminder || undefined,
-    });
-
-    setEvents(newEvents);
+    const updatedEvents = {
+      ...events,
+      [dateKey]: [
+        ...(events[dateKey] || []),
+        { description: newEvent, recurrence, category, reminder },
+      ],
+    };
+    setEvents(updatedEvents);
     setNewEvent("");
-    setRecurrence("none");
-    setCategory("work");
     setReminder("");
   };
 
-  const handleDeleteEvent = (date, index) => {
-    const dateKey = date.toDateString();
+  const handleDeleteEvent = (day, index) => {
+    const dateKey = day.toDateString();
     const updatedEvents = { ...events };
-
-    if (updatedEvents[dateKey]) {
-      updatedEvents[dateKey].splice(index, 1);
-
-      if (updatedEvents[dateKey].length === 0) {
-        delete updatedEvents[dateKey];
-        if (dateKey === selectedDate.toDateString()) {
-          closeModal();
-        }
-      }
-
-      setEvents(updatedEvents);
+    updatedEvents[dateKey].splice(index, 1);
+    if (updatedEvents[dateKey].length === 0) {
+      delete updatedEvents[dateKey];
     }
+    setEvents(updatedEvents);
   };
 
-  const handleEditEvent = () => {
-    setIsEditing(true);
-    setEditedEvent({ ...currentEvent });
+  const openModal = (event) => {
+    setCurrentEvent(event);
+    setModalIsOpen(true);
   };
 
-  const handleUpdateEvent = () => {
-    const dateKey = selectedDate.toDateString();
-    const updatedEvents = { ...events };
-
-    const eventIndex = updatedEvents[dateKey].findIndex(
-      (event) => event === currentEvent
-    );
-
-    if (eventIndex > -1) {
-      updatedEvents[dateKey][eventIndex] = editedEvent;
-
-      if (!editedEvent.category) {
-        delete editedEvent.category;
-      }
-      if (!editedEvent.reminder) {
-        delete editedEvent.reminder;
-      }
-
-      setEvents(updatedEvents);
-      setIsEditing(false);
-      setEditedEvent({});
-    }
+  const closeModal = () => {
+    setModalIsOpen(false);
   };
 
   const exportEventsToCSV = () => {
-    const eventsArray = Object.keys(events).flatMap((date) =>
-      events[date].map((event) => ({
-        Date: date,
+    const eventsArray = Object.keys(events).flatMap((dateKey) =>
+      events[dateKey].map((event) => ({
+        Date: dateKey,
         Description: event.description,
         Recurrence: event.recurrence,
         Category: event.category,
         Reminder: event.reminder,
       }))
     );
-
     const csv = Papa.unparse(eventsArray);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "events.csv");
+    link.href = URL.createObjectURL(blob);
+    link.download = "events.csv";
     link.click();
   };
 
@@ -289,13 +235,15 @@ const Calendar = () => {
         : view === "week"
         ? generateWeekView()
         : generateDayView();
+
     return (
       <div className="calendar-grid">
-        {daysOfWeek.map((day) => (
-          <div key={day} className="calendar-header-day">
-            {day}
-          </div>
-        ))}
+        {view === "month" &&
+          daysOfWeek.map((day) => (
+            <div key={day} className="day-of-week">
+              {day}
+            </div>
+          ))}
         {days.map((day, index) => (
           <div
             key={index}
@@ -312,11 +260,7 @@ const Calendar = () => {
                   className="event-indicator"
                   style={{ backgroundColor: categories[event.category] }}
                   title={event.description}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentEvent(event);
-                    setModalIsOpen(true);
-                  }}
+                  onClick={() => openModal(event)}
                 ></div>
               ))}
           </div>
@@ -376,7 +320,7 @@ const Calendar = () => {
         <button onClick={nextMonth}>&gt;</button>
         <button onClick={nextYear}>&gt;&gt;</button>
         <button onClick={exportEventsToCSV}>Export CSV</button>
-        <button onClick={() => setCurrentDate(new Date())}>Today</button>
+        <button onClick={goToToday}>Go to Today</button>
       </div>
       {showMonthPanel && renderMonthPanel()}
       {showYearPanel && renderYearPanel()}
@@ -448,70 +392,21 @@ const Calendar = () => {
         className="modal"
         overlayClassName="overlay"
       >
-        {isEditing ? (
-          <div className="event-edit-form">
-            <h2>Edit Event</h2>
-            <input
-              type="text"
-              value={editedEvent.description || ""}
-              onChange={(e) =>
-                setEditedEvent({ ...editedEvent, description: e.target.value })
-              }
-              placeholder="Event Description"
-            />
-            <select
-              value={editedEvent.recurrence || "none"}
-              onChange={(e) =>
-                setEditedEvent({ ...editedEvent, recurrence: e.target.value })
-              }
-            >
-              <option value="none">No Recurrence</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-            <select
-              value={editedEvent.category || "work"}
-              onChange={(e) =>
-                setEditedEvent({ ...editedEvent, category: e.target.value })
-              }
-            >
-              <option value="work">Work</option>
-              <option value="personal">Personal</option>
-              <option value="holiday">Holiday</option>
-              <option value="birthday">Birthday</option>
-            </select>
-            <input
-              type="number"
-              value={editedEvent.reminder || ""}
-              onChange={(e) =>
-                setEditedEvent({ ...editedEvent, reminder: e.target.value })
-              }
-              placeholder="Reminder (hours)"
-            />
-            <button onClick={handleUpdateEvent}>Update Event</button>
-          </div>
-        ) : (
-          <>
-            <h2>{currentEvent?.description}</h2>
-            <p>Recurrence: {currentEvent?.recurrence}</p>
-            <p>Category: {currentEvent?.category}</p>
-            <p>Reminder: {currentEvent?.reminder} hours</p>
-            <button onClick={handleEditEvent}>Edit</button>
-            <button
-              onClick={() =>
-                handleDeleteEvent(
-                  selectedDate,
-                  events[selectedDate.toDateString()].indexOf(currentEvent)
-                )
-              }
-            >
-              Delete
-            </button>
-            <button onClick={closeModal}>Close</button>
-          </>
-        )}
+        <h2>{currentEvent?.description}</h2>
+        <p>Recurrence: {currentEvent?.recurrence}</p>
+        <p>Category: {currentEvent?.category}</p>
+        <p>Reminder: {currentEvent?.reminder} hours</p>
+        <button
+          onClick={() =>
+            handleDeleteEvent(
+              selectedDate,
+              events[selectedDate.toDateString()].indexOf(currentEvent)
+            )
+          }
+        >
+          Delete
+        </button>
+        <button onClick={closeModal}>Close</button>
       </Modal>
     </div>
   );
