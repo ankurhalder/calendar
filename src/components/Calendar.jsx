@@ -19,6 +19,11 @@ const Calendar = () => {
   const [showMonthPanel, setShowMonthPanel] = useState(false);
   const [showYearPanel, setShowYearPanel] = useState(false);
   const calendarRef = useRef(null);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [updatedEvent, setUpdatedEvent] = useState("");
+  const [updatedRecurrence, setUpdatedRecurrence] = useState("none");
+  const [updatedCategory, setUpdatedCategory] = useState("work");
+  const [updatedReminder, setUpdatedReminder] = useState("");
 
   const categories = {
     work: "blue",
@@ -210,6 +215,38 @@ const Calendar = () => {
     setModalIsOpen(false);
   };
 
+  const handleUpdateEvent = () => {
+    if (!editingEvent) return;
+    const dateKey = selectedDate.toDateString();
+    const updatedEvents = { ...events };
+    const index = updatedEvents[dateKey].indexOf(editingEvent);
+
+    if (index !== -1) {
+      updatedEvents[dateKey][index] = {
+        description: updatedEvent,
+        recurrence: updatedRecurrence,
+        category: updatedCategory,
+        reminder: updatedReminder,
+      };
+
+      setEvents(updatedEvents);
+      setEditingEvent(null);
+      setUpdatedEvent("");
+      setUpdatedRecurrence("none");
+      setUpdatedCategory("work");
+      setUpdatedReminder("");
+    }
+  };
+
+  const handleEditClick = (event) => {
+    setEditingEvent(event);
+    setUpdatedEvent(event.description);
+    setUpdatedRecurrence(event.recurrence);
+    setUpdatedCategory(event.category);
+    setUpdatedReminder(event.reminder);
+    setModalIsOpen(true);
+  };
+
   const exportEventsToCSV = () => {
     const eventsArray = Object.keys(events).flatMap((dateKey) =>
       events[dateKey].map((event) => ({
@@ -238,31 +275,35 @@ const Calendar = () => {
 
     return (
       <div className="calendar-grid">
-        {view === "month" &&
-          daysOfWeek.map((day) => (
-            <div key={day} className="day-of-week">
-              {day}
-            </div>
-          ))}
+        {daysOfWeek.map((day) => (
+          <div key={day} className="calendar-header-day">
+            {day}
+          </div>
+        ))}
         {days.map((day, index) => (
           <div
             key={index}
-            className={`calendar-day ${day ? "" : "empty"} ${
-              day?.toDateString() === new Date().toDateString() ? "today" : ""
+            className={`calendar-day ${
+              day && day.toDateString() === selectedDate?.toDateString()
+                ? "selected"
+                : ""
             }`}
             onClick={() => day && handleDayClick(day)}
           >
             {day ? day.getDate() : ""}
-            {day &&
-              getEventsForDate(day).map((event, idx) => (
-                <div
-                  key={idx}
-                  className="event-indicator"
-                  style={{ backgroundColor: categories[event.category] }}
-                  title={event.description}
-                  onClick={() => openModal(event)}
-                ></div>
-              ))}
+            <div className="events">
+              {day &&
+                getEventsForDate(day).map((event, i) => (
+                  <div
+                    key={i}
+                    className="event"
+                    style={{ backgroundColor: categories[event.category] }}
+                    onClick={() => openModal(event)}
+                  >
+                    {event.description}
+                  </div>
+                ))}
+            </div>
           </div>
         ))}
       </div>
@@ -392,21 +433,63 @@ const Calendar = () => {
         className="modal"
         overlayClassName="overlay"
       >
-        <h2>{currentEvent?.description}</h2>
-        <p>Recurrence: {currentEvent?.recurrence}</p>
-        <p>Category: {currentEvent?.category}</p>
-        <p>Reminder: {currentEvent?.reminder} hours</p>
-        <button
-          onClick={() =>
-            handleDeleteEvent(
-              selectedDate,
-              events[selectedDate.toDateString()].indexOf(currentEvent)
-            )
-          }
-        >
-          Delete
-        </button>
-        <button onClick={closeModal}>Close</button>
+        {currentEvent && (
+          <div>
+            <h2>{currentEvent.description}</h2>
+            <p>Recurrence: {currentEvent.recurrence}</p>
+            <p>Category: {currentEvent.category}</p>
+            <p>Reminder: {currentEvent.reminder} hours</p>
+            <button
+              onClick={() =>
+                handleDeleteEvent(
+                  selectedDate,
+                  events[selectedDate.toDateString()].indexOf(currentEvent)
+                )
+              }
+            >
+              Delete
+            </button>
+            <button onClick={() => handleEditClick(currentEvent)}>Edit</button>
+            <button onClick={closeModal}>Close</button>
+          </div>
+        )}
+        {editingEvent && (
+          <div>
+            <h2>Edit Event</h2>
+            <input
+              type="text"
+              value={updatedEvent}
+              onChange={(e) => setUpdatedEvent(e.target.value)}
+              placeholder="Event Description"
+            />
+            <select
+              value={updatedRecurrence}
+              onChange={(e) => setUpdatedRecurrence(e.target.value)}
+            >
+              <option value="none">No Recurrence</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+            <select
+              value={updatedCategory}
+              onChange={(e) => setUpdatedCategory(e.target.value)}
+            >
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+              <option value="holiday">Holiday</option>
+              <option value="birthday">Birthday</option>
+            </select>
+            <input
+              type="number"
+              value={updatedReminder}
+              onChange={(e) => setUpdatedReminder(e.target.value)}
+              placeholder="Reminder (hours)"
+            />
+            <button onClick={handleUpdateEvent}>Update Event</button>
+          </div>
+        )}
       </Modal>
     </div>
   );
