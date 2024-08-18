@@ -7,8 +7,16 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [newEvent, setNewEvent] = useState("");
   const [recurrence, setRecurrence] = useState("none");
+  const [category, setCategory] = useState("work");
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const categories = {
+    work: "blue",
+    personal: "green",
+    holiday: "red",
+    birthday: "purple",
+  };
 
   const firstDayOfMonth = new Date(
     currentDate.getFullYear(),
@@ -81,7 +89,7 @@ const Calendar = () => {
       ...events,
       [dateKey]: [
         ...(events[dateKey] || []),
-        { description: newEvent, recurrence },
+        { description: newEvent, recurrence, category },
       ],
     };
     setEvents(updatedEvents);
@@ -101,7 +109,6 @@ const Calendar = () => {
   const getEventsForDate = (date) => {
     const dateKey = date.toDateString();
     let dateEvents = events[dateKey] || [];
-    // Check for recurring events
     Object.keys(events).forEach((key) => {
       events[key].forEach((event) => {
         if (event.recurrence !== "none") {
@@ -150,9 +157,15 @@ const Calendar = () => {
             onClick={() => day && handleDayClick(day)}
           >
             {day ? day.getDate() : ""}
-            {day && getEventsForDate(day).length > 0 && (
-              <span className="event-indicator">•</span>
-            )}
+            {day &&
+              getEventsForDate(day).map((event, idx) => (
+                <div
+                  key={idx}
+                  className="event-indicator"
+                  style={{ backgroundColor: categories[event.category] }}
+                  title={event.description}
+                ></div>
+              ))}
           </div>
         ))}
       </div>
@@ -161,7 +174,7 @@ const Calendar = () => {
           <h3>Events on {selectedDate.toDateString()}</h3>
           <ul>
             {getEventsForDate(selectedDate).map((event, index) => (
-              <li key={index}>
+              <li key={index} style={{ color: categories[event.category] }}>
                 {event.description} ({event.recurrence})
                 <button onClick={() => handleDeleteEvent(selectedDate, index)}>
                   Delete
@@ -184,6 +197,15 @@ const Calendar = () => {
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
+          </select>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="work">Work</option>
+            <option value="personal">Personal</option>
+            <option value="holiday">Holiday</option>
+            <option value="birthday">Birthday</option>
           </select>
           <button onClick={handleAddEvent}>Add Event</button>
         </div>
