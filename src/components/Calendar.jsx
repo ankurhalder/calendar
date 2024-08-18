@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Calendar.css";
 
 const Calendar = () => {
@@ -8,9 +8,17 @@ const Calendar = () => {
   const [newEvent, setNewEvent] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const [category, setCategory] = useState("work");
+  const [reminderTime, setReminderTime] = useState("");
   const [view, setView] = useState("month");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [startOfWeek, setStartOfWeek] = useState("Sunday");
+  const [timeFormat, setTimeFormat] = useState("24-hour");
 
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const daysOfWeek =
+    startOfWeek === "Monday"
+      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const categories = {
     work: "blue",
@@ -29,6 +37,17 @@ const Calendar = () => {
     currentDate.getMonth() + 1,
     0
   );
+
+  useEffect(() => {
+    const now = new Date();
+    Object.keys(events).forEach((dateKey) => {
+      events[dateKey].forEach((event) => {
+        if (event.reminder && new Date(event.reminder) <= now) {
+          alert(`Reminder: ${event.description} is due now!`);
+        }
+      });
+    });
+  }, [events]);
 
   const prevMonth = () => {
     setCurrentDate(
@@ -62,7 +81,7 @@ const Calendar = () => {
     const calendarDays = [];
     let day = firstDayOfMonth;
 
-    while (day.getDay() !== 0) {
+    while (day.getDay() !== daysOfWeek.indexOf(startOfWeek)) {
       day = new Date(day.setDate(day.getDate() - 1));
       calendarDays.unshift(null);
     }
@@ -99,6 +118,16 @@ const Calendar = () => {
   const getEventsForDate = (date) => {
     const dateKey = date.toDateString();
     let dateEvents = events[dateKey] || [];
+    if (searchTerm) {
+      dateEvents = dateEvents.filter((event) =>
+        event.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (filterCategory !== "all") {
+      dateEvents = dateEvents.filter(
+        (event) => event.category === filterCategory
+      );
+    }
     Object.keys(events).forEach((key) => {
       events[key].forEach((event) => {
         if (event.recurrence !== "none") {
@@ -131,11 +160,12 @@ const Calendar = () => {
       ...events,
       [dateKey]: [
         ...(events[dateKey] || []),
-        { description: newEvent, recurrence, category },
+        { description: newEvent, recurrence, category, reminder: reminderTime },
       ],
     };
     setEvents(updatedEvents);
     setNewEvent("");
+    setReminderTime("");
   };
 
   const handleDeleteEvent = (day, index) => {
@@ -146,6 +176,23 @@ const Calendar = () => {
       delete updatedEvents[dateKey];
     }
     setEvents(updatedEvents);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleFilterChange = (e) => {
+    setFilterCategory(e.target.value);
+  };
+
+  const handleShareEvent = (event) => {
+    const eventDetails = `Event: ${
+      event.description
+    }\nDate: ${selectedDate.toDateString()}\nReminder: ${
+      event.reminder ? new Date(event.reminder).toLocaleTimeString() : "None"
+    }`;
+    alert(eventDetails);
   };
 
   const renderCalendarGrid = () => {
@@ -205,6 +252,21 @@ const Calendar = () => {
         <button onClick={() => changeView("week")}>Week</button>
         <button onClick={() => changeView("day")}>Day</button>
       </div>
+      <div className="search-filter">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleSearchChange}
+          placeholder="Search events"
+        />
+        <select value={filterCategory} onChange={handleFilterChange}>
+          <option value="all">All Categories</option>
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
+          <option value="holiday">Holiday</option>
+          <option value="birthday">Birthday</option>
+        </select>
+      </div>
       {renderCalendarGrid()}
       {selectedDate && (
         <div className="event-form">
@@ -213,9 +275,15 @@ const Calendar = () => {
             {getEventsForDate(selectedDate).map((event, index) => (
               <li key={index} style={{ color: categories[event.category] }}>
                 {event.description} ({event.recurrence})
+                {event.reminder && (
+                  <span className="reminder-time">
+                    Reminder: {new Date(event.reminder).toLocaleTimeString()}
+                  </span>
+                )}
                 <button onClick={() => handleDeleteEvent(selectedDate, index)}>
                   Delete
                 </button>
+                <button onClick={() => handleShareEvent(event)}>Share</button>
               </li>
             ))}
           </ul>
@@ -244,9 +312,37 @@ const Calendar = () => {
             <option value="holiday">Holiday</option>
             <option value="birthday">Birthday</option>
           </select>
+          <input
+            type="datetime-local"
+            value={reminderTime}
+            onChange={(e) => setReminderTime(e.target.value)}
+            placeholder="Set reminder"
+          />
           <button onClick={handleAddEvent}>Add Event</button>
         </div>
       )}
+      <div className="settings">
+        <label>
+          Start of Week:
+          <select
+            value={startOfWeek}
+            onChange={(e) => setStartOfWeek(e.target.value)}
+          >
+            <option value="Sunday">Sunday</option>
+            <option value="Monday">Monday</option>
+          </select>
+        </label>
+        <label>
+          Time Format:
+          <select
+            value={timeFormat}
+            onChange={(e) => setTimeFormat(e.target.value)}
+          >
+            <option value="24-hour">24-hour</option>
+            <option value="12-hour">12-hour</option>
+          </select>
+        </label>
+      </div>
     </div>
   );
 };
