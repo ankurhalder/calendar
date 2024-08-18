@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import Modal from "react-modal";
 import Papa from "papaparse";
@@ -24,6 +25,8 @@ const Calendar = () => {
   const [updatedRecurrence, setUpdatedRecurrence] = useState("none");
   const [updatedCategory, setUpdatedCategory] = useState("work");
   const [updatedReminder, setUpdatedReminder] = useState("");
+  const [errorMessage, setErrorMessage] = useState(""); // State for error messages
+  const [successMessage, setSuccessMessage] = useState(""); // State for success messages
 
   const categories = {
     work: "blue",
@@ -31,6 +34,27 @@ const Calendar = () => {
     holiday: "red",
     birthday: "purple",
   };
+
+  useEffect(() => {
+    // Load events from local storage on component mount
+    try {
+      const storedEvents = localStorage.getItem("events");
+      if (storedEvents) {
+        setEvents(JSON.parse(storedEvents));
+      }
+    } catch (error) {
+      setErrorMessage("Failed to load events from local storage.");
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save events to local storage whenever they change
+    try {
+      localStorage.setItem("events", JSON.stringify(events));
+    } catch (error) {
+      setErrorMessage("Failed to save events to local storage.");
+    }
+  }, [events]);
 
   useEffect(() => {
     const now = new Date();
@@ -181,7 +205,14 @@ const Calendar = () => {
   };
 
   const handleAddEvent = () => {
-    if (!newEvent) return;
+    if (!newEvent) {
+      setErrorMessage("Event description is required.");
+      return;
+    }
+    if (isNaN(reminder) || parseInt(reminder, 10) < 0) {
+      setErrorMessage("Reminder should be a positive number.");
+      return;
+    }
     const dateKey = selectedDate.toDateString();
     const updatedEvents = {
       ...events,
@@ -193,6 +224,8 @@ const Calendar = () => {
     setEvents(updatedEvents);
     setNewEvent("");
     setReminder("");
+    setErrorMessage(""); // Clear error message on successful add
+    setSuccessMessage("Event added successfully."); // Set success message
   };
 
   const handleDeleteEvent = (day, index) => {
@@ -204,6 +237,8 @@ const Calendar = () => {
       setModalIsOpen(false);
     }
     setEvents(updatedEvents);
+    setErrorMessage(""); // Clear error message on successful delete
+    setSuccessMessage("Event deleted successfully."); // Set success message
   };
 
   const openModal = (event) => {
@@ -219,10 +254,9 @@ const Calendar = () => {
     if (!editingEvent) return;
     const dateKey = selectedDate.toDateString();
     const updatedEvents = { ...events };
-    const index = updatedEvents[dateKey].indexOf(editingEvent);
-
-    if (index !== -1) {
-      updatedEvents[dateKey][index] = {
+    const eventIndex = updatedEvents[dateKey].indexOf(editingEvent);
+    if (eventIndex !== -1) {
+      updatedEvents[dateKey][eventIndex] = {
         description: updatedEvent,
         recurrence: updatedRecurrence,
         category: updatedCategory,
@@ -235,11 +269,8 @@ const Calendar = () => {
       setUpdatedRecurrence("none");
       setUpdatedCategory("work");
       setUpdatedReminder("");
-
-      if (updatedEvents[dateKey].length === 0) {
-        delete updatedEvents[dateKey];
-        setModalIsOpen(false);
-      }
+      setErrorMessage(""); // Clear error message on successful update
+      setSuccessMessage("Event updated successfully."); // Set success message
     }
   };
 
@@ -253,22 +284,29 @@ const Calendar = () => {
   };
 
   const exportEventsToCSV = () => {
-    const eventsArray = Object.keys(events).flatMap((dateKey) =>
-      events[dateKey].map((event) => ({
-        Date: dateKey,
-        Description: event.description,
-        Recurrence: event.recurrence,
-        Category: event.category,
-        Reminder: event.reminder,
-      }))
-    );
-    const csv = Papa.unparse(eventsArray);
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "events.csv";
-    link.click();
+    try {
+      const csv = Papa.unparse({
+        fields: ["Date", "Description", "Recurrence", "Category", "Reminder"],
+        data: Object.entries(events).flatMap(([dateKey, events]) =>
+          events.map((event) => [
+            dateKey,
+            event.description,
+            event.recurrence,
+            event.category,
+            event.reminder,
+          ])
+        ),
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "events.csv";
+      link.click();
+    } catch (error) {
+      setErrorMessage("Failed to export events.");
+    }
   };
 
   const renderCalendarGrid = () => {
@@ -430,6 +468,10 @@ const Calendar = () => {
             placeholder="Reminder (hours)"
           />
           <button onClick={handleAddEvent}>Add Event</button>
+          {errorMessage && <div className="error-message">{errorMessage}</div>}
+          {successMessage && (
+            <div className="success-message">{successMessage}</div>
+          )}
         </div>
       )}
       <Modal
@@ -494,6 +536,12 @@ const Calendar = () => {
               placeholder="Reminder (hours)"
             />
             <button onClick={handleUpdateEvent}>Update Event</button>
+            {errorMessage && (
+              <div className="error-message">{errorMessage}</div>
+            )}
+            {successMessage && (
+              <div className="success-message">{successMessage}</div>
+            )}
           </div>
         )}
       </Modal>
