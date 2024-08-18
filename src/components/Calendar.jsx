@@ -3,9 +3,10 @@ import "./Calendar.css";
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState({}); // Stores events by date
+  const [events, setEvents] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
   const [newEvent, setNewEvent] = useState("");
+  const [recurrence, setRecurrence] = useState("none");
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -48,22 +49,18 @@ const Calendar = () => {
     const calendarDays = [];
     let day = firstDayOfMonth;
 
-    // Add the empty days at the start of the month
     while (day.getDay() !== 0) {
       day = new Date(day.setDate(day.getDate() - 1));
       calendarDays.unshift(null);
     }
 
-    // Reset day to the first day of the month
     day = firstDayOfMonth;
 
-    // Add all days of the month
     while (day <= lastDayOfMonth) {
       calendarDays.push(new Date(day));
       day = new Date(day.setDate(day.getDate() + 1));
     }
 
-    // Add the empty days at the end of the month
     while (calendarDays.length % 7 !== 0) {
       calendarDays.push(null);
     }
@@ -82,7 +79,10 @@ const Calendar = () => {
     const dateKey = selectedDate.toDateString();
     const updatedEvents = {
       ...events,
-      [dateKey]: [...(events[dateKey] || []), newEvent],
+      [dateKey]: [
+        ...(events[dateKey] || []),
+        { description: newEvent, recurrence },
+      ],
     };
     setEvents(updatedEvents);
     setNewEvent("");
@@ -96,6 +96,31 @@ const Calendar = () => {
       delete updatedEvents[dateKey];
     }
     setEvents(updatedEvents);
+  };
+
+  const getEventsForDate = (date) => {
+    const dateKey = date.toDateString();
+    let dateEvents = events[dateKey] || [];
+    // Check for recurring events
+    Object.keys(events).forEach((key) => {
+      events[key].forEach((event) => {
+        if (event.recurrence !== "none") {
+          if (
+            event.recurrence === "daily" ||
+            (event.recurrence === "weekly" &&
+              new Date(key).getDay() === date.getDay()) ||
+            (event.recurrence === "monthly" &&
+              new Date(key).getDate() === date.getDate()) ||
+            (event.recurrence === "yearly" &&
+              new Date(key).getMonth() === date.getMonth() &&
+              new Date(key).getDate() === date.getDate())
+          ) {
+            dateEvents.push(event);
+          }
+        }
+      });
+    });
+    return dateEvents;
   };
 
   return (
@@ -125,7 +150,7 @@ const Calendar = () => {
             onClick={() => day && handleDayClick(day)}
           >
             {day ? day.getDate() : ""}
-            {day && events[day.toDateString()] && (
+            {day && getEventsForDate(day).length > 0 && (
               <span className="event-indicator">•</span>
             )}
           </div>
@@ -135,9 +160,9 @@ const Calendar = () => {
         <div className="event-form">
           <h3>Events on {selectedDate.toDateString()}</h3>
           <ul>
-            {(events[selectedDate.toDateString()] || []).map((event, index) => (
+            {getEventsForDate(selectedDate).map((event, index) => (
               <li key={index}>
-                {event}
+                {event.description} ({event.recurrence})
                 <button onClick={() => handleDeleteEvent(selectedDate, index)}>
                   Delete
                 </button>
@@ -150,6 +175,16 @@ const Calendar = () => {
             onChange={(e) => setNewEvent(e.target.value)}
             placeholder="Add new event"
           />
+          <select
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value)}
+          >
+            <option value="none">No Recurrence</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
           <button onClick={handleAddEvent}>Add Event</button>
         </div>
       )}
