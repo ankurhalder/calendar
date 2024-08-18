@@ -16,6 +16,8 @@ const Calendar = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
+  const [showMonthPanel, setShowMonthPanel] = useState(false);
+  const [showYearPanel, setShowYearPanel] = useState(false);
 
   const categories = {
     work: "blue",
@@ -53,6 +55,16 @@ const Calendar = () => {
   );
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const handleMonthSelect = (month) => {
+    setCurrentDate(new Date(currentDate.getFullYear(), month, 1));
+    setShowMonthPanel(false);
+  };
+
+  const handleYearSelect = (year) => {
+    setCurrentDate(new Date(year, currentDate.getMonth(), 1));
+    setShowYearPanel(false);
+  };
 
   const prevMonth = () => {
     setCurrentDate(
@@ -237,19 +249,60 @@ const Calendar = () => {
     );
   };
 
+  const renderMonthPanel = () => {
+    const months = Array.from({ length: 12 }, (_, i) => i);
+    return (
+      <div className="month-panel">
+        {months.map((month) => (
+          <div
+            key={month}
+            className="month-item"
+            onClick={() => handleMonthSelect(month)}
+          >
+            {new Date(0, month).toLocaleString("default", { month: "long" })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderYearPanel = () => {
+    const currentYear = currentDate.getFullYear();
+    const years = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
+    return (
+      <div className="year-panel">
+        {years.map((year) => (
+          <div
+            key={year}
+            className="year-item"
+            onClick={() => handleYearSelect(year)}
+          >
+            {year}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="calendar-container">
       <div className="calendar-header">
         <button onClick={prevYear}>&lt;&lt;</button>
         <button onClick={prevMonth}>&lt;</button>
-        <div className="current-month">
-          {currentDate.toLocaleString("default", { month: "long" })}{" "}
-          {currentDate.getFullYear()}
+        <div className="current-month-year">
+          <div onClick={() => setShowMonthPanel(!showMonthPanel)}>
+            {currentDate.toLocaleString("default", { month: "long" })}
+          </div>
+          <div onClick={() => setShowYearPanel(!showYearPanel)}>
+            {currentDate.getFullYear()}
+          </div>
         </div>
         <button onClick={nextMonth}>&gt;</button>
         <button onClick={nextYear}>&gt;&gt;</button>
         <button onClick={exportEventsToCSV}>Export CSV</button>
       </div>
+      {showMonthPanel && renderMonthPanel()}
+      {showYearPanel && renderYearPanel()}
       <div className="view-switcher">
         <button onClick={() => changeView("day")}>Day View</button>
         <button onClick={() => changeView("week")}>Week View</button>
