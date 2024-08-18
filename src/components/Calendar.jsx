@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "react-modal";
 import Papa from "papaparse";
 import "./Calendar.css";
@@ -246,6 +246,24 @@ const Calendar = () => {
         <button onClick={() => changeView("week")}>Week View</button>
         <button onClick={() => changeView("month")}>Month View</button>
       </div>
+      <div className="search-filter">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search Events"
+        />
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <option value="all">All Categories</option>
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
+          <option value="holiday">Holiday</option>
+          <option value="birthday">Birthday</option>
+        </select>
+      </div>
       {renderCalendarGrid()}
       {selectedDate && (
         <div className="event-form">
@@ -282,22 +300,6 @@ const Calendar = () => {
             placeholder="Reminder (hours)"
           />
           <button onClick={handleAddEvent}>Add Event</button>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search Events"
-          />
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="work">Work</option>
-            <option value="personal">Personal</option>
-            <option value="holiday">Holiday</option>
-            <option value="birthday">Birthday</option>
-          </select>
         </div>
       )}
       <Modal
