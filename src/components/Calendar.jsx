@@ -8,6 +8,7 @@ const Calendar = () => {
   const [newEvent, setNewEvent] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const [category, setCategory] = useState("work");
+  const [view, setView] = useState("month");
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -53,6 +54,10 @@ const Calendar = () => {
     );
   };
 
+  const changeView = (viewType) => {
+    setView(viewType);
+  };
+
   const generateCalendar = () => {
     const calendarDays = [];
     let day = firstDayOfMonth;
@@ -76,7 +81,44 @@ const Calendar = () => {
     return calendarDays;
   };
 
-  const calendarDays = generateCalendar();
+  const generateWeekView = () => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      weekDays.push(new Date(startOfWeek));
+      startOfWeek.setDate(startOfWeek.getDate() + 1);
+    }
+    return weekDays;
+  };
+
+  const generateDayView = () => {
+    return [new Date(currentDate)];
+  };
+
+  const getEventsForDate = (date) => {
+    const dateKey = date.toDateString();
+    let dateEvents = events[dateKey] || [];
+    Object.keys(events).forEach((key) => {
+      events[key].forEach((event) => {
+        if (event.recurrence !== "none") {
+          if (
+            event.recurrence === "daily" ||
+            (event.recurrence === "weekly" &&
+              new Date(key).getDay() === date.getDay()) ||
+            (event.recurrence === "monthly" &&
+              new Date(key).getDate() === date.getDate()) ||
+            (event.recurrence === "yearly" &&
+              new Date(key).getMonth() === date.getMonth() &&
+              new Date(key).getDate() === date.getDate())
+          ) {
+            dateEvents.push(event);
+          }
+        }
+      });
+    });
+    return dateEvents;
+  };
 
   const handleDayClick = (day) => {
     setSelectedDate(day);
@@ -106,49 +148,23 @@ const Calendar = () => {
     setEvents(updatedEvents);
   };
 
-  const getEventsForDate = (date) => {
-    const dateKey = date.toDateString();
-    let dateEvents = events[dateKey] || [];
-    Object.keys(events).forEach((key) => {
-      events[key].forEach((event) => {
-        if (event.recurrence !== "none") {
-          if (
-            event.recurrence === "daily" ||
-            (event.recurrence === "weekly" &&
-              new Date(key).getDay() === date.getDay()) ||
-            (event.recurrence === "monthly" &&
-              new Date(key).getDate() === date.getDate()) ||
-            (event.recurrence === "yearly" &&
-              new Date(key).getMonth() === date.getMonth() &&
-              new Date(key).getDate() === date.getDate())
-          ) {
-            dateEvents.push(event);
-          }
-        }
-      });
-    });
-    return dateEvents;
-  };
+  const renderCalendarGrid = () => {
+    const days =
+      view === "month"
+        ? generateCalendar()
+        : view === "week"
+        ? generateWeekView()
+        : generateDayView();
 
-  return (
-    <div className="calendar-container">
-      <div className="calendar-header">
-        <button onClick={prevYear}>&lt;&lt;</button>
-        <button onClick={prevMonth}>&lt;</button>
-        <div className="current-month">
-          {currentDate.toLocaleString("default", { month: "long" })}{" "}
-          {currentDate.getFullYear()}
-        </div>
-        <button onClick={nextMonth}>&gt;</button>
-        <button onClick={nextYear}>&gt;&gt;</button>
-      </div>
+    return (
       <div className="calendar-grid">
-        {daysOfWeek.map((day) => (
-          <div key={day} className="day-of-week">
-            {day}
-          </div>
-        ))}
-        {calendarDays.map((day, index) => (
+        {view === "month" &&
+          daysOfWeek.map((day) => (
+            <div key={day} className="day-of-week">
+              {day}
+            </div>
+          ))}
+        {days.map((day, index) => (
           <div
             key={index}
             className={`calendar-day ${day ? "" : "empty"} ${
@@ -169,6 +185,27 @@ const Calendar = () => {
           </div>
         ))}
       </div>
+    );
+  };
+
+  return (
+    <div className="calendar-container">
+      <div className="calendar-header">
+        <button onClick={prevYear}>&lt;&lt;</button>
+        <button onClick={prevMonth}>&lt;</button>
+        <div className="current-month">
+          {currentDate.toLocaleString("default", { month: "long" })}{" "}
+          {currentDate.getFullYear()}
+        </div>
+        <button onClick={nextMonth}>&gt;</button>
+        <button onClick={nextYear}>&gt;&gt;</button>
+      </div>
+      <div className="view-switcher">
+        <button onClick={() => changeView("month")}>Month</button>
+        <button onClick={() => changeView("week")}>Week</button>
+        <button onClick={() => changeView("day")}>Day</button>
+      </div>
+      {renderCalendarGrid()}
       {selectedDate && (
         <div className="event-form">
           <h3>Events on {selectedDate.toDateString()}</h3>
