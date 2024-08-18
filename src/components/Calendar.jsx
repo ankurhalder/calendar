@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Modal from "react-modal";
 import Papa from "papaparse";
 import "./Calendar.css";
@@ -132,7 +132,16 @@ const Calendar = () => {
   };
 
   const handleDayClick = (day) => {
-    setSelectedDate(day);
+    if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
+      setModalIsOpen(false);
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(day);
+      const dateKey = day.toDateString();
+      if (events[dateKey] && events[dateKey].length > 0) {
+        setModalIsOpen(true);
+      }
+    }
   };
 
   const handleAddEvent = () => {
