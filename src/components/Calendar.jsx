@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Modal from "react-modal";
 import Papa from "papaparse";
 import "./Calendar.css";
@@ -18,6 +18,7 @@ const Calendar = () => {
   const [currentEvent, setCurrentEvent] = useState(null);
   const [showMonthPanel, setShowMonthPanel] = useState(false);
   const [showYearPanel, setShowYearPanel] = useState(false);
+  const calendarRef = useRef(null);
 
   const categories = {
     work: "blue",
@@ -42,6 +43,20 @@ const Calendar = () => {
       });
     });
   }, [events]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        setShowMonthPanel(false);
+        setShowYearPanel(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const firstDayOfMonth = new Date(
     currentDate.getFullYear(),
@@ -285,7 +300,7 @@ const Calendar = () => {
   };
 
   return (
-    <div className="calendar-container">
+    <div className="calendar-container" ref={calendarRef}>
       <div className="calendar-header">
         <button onClick={prevYear}>&lt;&lt;</button>
         <button onClick={prevMonth}>&lt;</button>
