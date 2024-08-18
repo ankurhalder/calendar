@@ -194,10 +194,16 @@ const Calendar = () => {
   const handleDeleteEvent = (day, index) => {
     const dateKey = day.toDateString();
     const updatedEvents = { ...events };
+
+    // Remove the specific event
     updatedEvents[dateKey].splice(index, 1);
+
+    // Check if there are no more events for this date
     if (updatedEvents[dateKey].length === 0) {
       delete updatedEvents[dateKey];
+      setModalIsOpen(false); // Close the modal if no events are left
     }
+
     setEvents(updatedEvents);
   };
 
@@ -247,21 +253,19 @@ const Calendar = () => {
         {days.map((day, index) => (
           <div
             key={index}
-            className={`calendar-day ${day ? "" : "empty"} ${
-              day?.toDateString() === new Date().toDateString() ? "today" : ""
-            }`}
+            className={`calendar-day ${day ? "" : "empty"}`}
             onClick={() => day && handleDayClick(day)}
           >
-            {day ? day.getDate() : ""}
+            {day && day.getDate()}
             {day &&
-              getEventsForDate(day).map((event, idx) => (
+              getEventsForDate(day).map((event, i) => (
                 <div
-                  key={idx}
-                  className="event-indicator"
+                  key={i}
+                  className="event"
                   style={{ backgroundColor: categories[event.category] }}
-                  title={event.description}
-                  onClick={() => openModal(event)}
-                ></div>
+                >
+                  {event.description}
+                </div>
               ))}
           </div>
         ))}
