@@ -47,6 +47,7 @@ const Calendar = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        console.log("Clicked outside"); // Debugging
         setShowMonthPanel(false);
         setShowYearPanel(false);
       }
@@ -107,6 +108,10 @@ const Calendar = () => {
 
   const changeView = (viewType) => {
     setView(viewType);
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
   };
 
   const generateCalendar = () => {
@@ -315,6 +320,7 @@ const Calendar = () => {
         <button onClick={nextMonth}>&gt;</button>
         <button onClick={nextYear}>&gt;&gt;</button>
         <button onClick={exportEventsToCSV}>Export CSV</button>
+        <button onClick={goToToday}>Go to Today</button>
       </div>
       {showMonthPanel && renderMonthPanel()}
       {showYearPanel && renderYearPanel()}
