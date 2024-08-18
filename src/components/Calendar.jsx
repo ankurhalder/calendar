@@ -52,7 +52,6 @@ const Calendar = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
-        console.log("Clicked outside"); // Debugging
         setShowMonthPanel(false);
         setShowYearPanel(false);
       }
@@ -202,6 +201,7 @@ const Calendar = () => {
     updatedEvents[dateKey].splice(index, 1);
     if (updatedEvents[dateKey].length === 0) {
       delete updatedEvents[dateKey];
+      setModalIsOpen(false);
     }
     setEvents(updatedEvents);
   };
@@ -235,6 +235,11 @@ const Calendar = () => {
       setUpdatedRecurrence("none");
       setUpdatedCategory("work");
       setUpdatedReminder("");
+
+      if (updatedEvents[dateKey].length === 0) {
+        delete updatedEvents[dateKey];
+        setModalIsOpen(false);
+      }
     }
   };
 
@@ -258,9 +263,10 @@ const Calendar = () => {
       }))
     );
     const csv = Papa.unparse(eventsArray);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = url;
     link.download = "events.csv";
     link.click();
   };
