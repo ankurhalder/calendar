@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
+import Papa from "papaparse";
 import "./Calendar.css";
 
 const Calendar = () => {
@@ -11,13 +12,10 @@ const Calendar = () => {
   const [category, setCategory] = useState("work");
   const [reminder, setReminder] = useState("");
   const [view, setView] = useState("month");
-  const [darkMode, setDarkMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
-
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const categories = {
     work: "blue",
@@ -25,17 +23,6 @@ const Calendar = () => {
     holiday: "red",
     birthday: "purple",
   };
-
-  const firstDayOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  );
-  const lastDayOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  );
 
   useEffect(() => {
     const now = new Date();
@@ -53,6 +40,19 @@ const Calendar = () => {
       });
     });
   }, [events]);
+
+  const firstDayOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
+  const lastDayOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  );
+
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const prevMonth = () => {
     setCurrentDate(
@@ -160,10 +160,6 @@ const Calendar = () => {
     setEvents(updatedEvents);
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
   const openModal = (event) => {
     setCurrentEvent(event);
     setModalIsOpen(true);
@@ -171,6 +167,24 @@ const Calendar = () => {
 
   const closeModal = () => {
     setModalIsOpen(false);
+  };
+
+  const exportEventsToCSV = () => {
+    const eventsArray = Object.keys(events).flatMap((dateKey) =>
+      events[dateKey].map((event) => ({
+        Date: dateKey,
+        Description: event.description,
+        Recurrence: event.recurrence,
+        Category: event.category,
+        Reminder: event.reminder,
+      }))
+    );
+    const csv = Papa.unparse(eventsArray);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "events.csv";
+    link.click();
   };
 
   const renderCalendarGrid = () => {
@@ -182,7 +196,7 @@ const Calendar = () => {
         : generateDayView();
 
     return (
-      <div className={`calendar-grid ${darkMode ? "dark" : ""}`}>
+      <div className="calendar-grid">
         {view === "month" &&
           daysOfWeek.map((day) => (
             <div key={day} className="day-of-week">
@@ -215,7 +229,7 @@ const Calendar = () => {
   };
 
   return (
-    <div className={`calendar-container ${darkMode ? "dark" : ""}`}>
+    <div className="calendar-container">
       <div className="calendar-header">
         <button onClick={prevYear}>&lt;&lt;</button>
         <button onClick={prevMonth}>&lt;</button>
@@ -225,45 +239,17 @@ const Calendar = () => {
         </div>
         <button onClick={nextMonth}>&gt;</button>
         <button onClick={nextYear}>&gt;&gt;</button>
-        <button onClick={toggleDarkMode}>
-          {darkMode ? "Light Mode" : "Dark Mode"}
-        </button>
+        <button onClick={exportEventsToCSV}>Export CSV</button>
       </div>
       <div className="view-switcher">
-        <button onClick={() => changeView("month")}>Month</button>
-        <button onClick={() => changeView("week")}>Week</button>
-        <button onClick={() => changeView("day")}>Day</button>
+        <button onClick={() => changeView("day")}>Day View</button>
+        <button onClick={() => changeView("week")}>Week View</button>
+        <button onClick={() => changeView("month")}>Month View</button>
       </div>
-      <input
-        type="text"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder="Search events"
-      />
-      <select
-        value={filterCategory}
-        onChange={(e) => setFilterCategory(e.target.value)}
-      >
-        <option value="all">All Categories</option>
-        <option value="work">Work</option>
-        <option value="personal">Personal</option>
-        <option value="holiday">Holiday</option>
-        <option value="birthday">Birthday</option>
-      </select>
       {renderCalendarGrid()}
       {selectedDate && (
         <div className="event-form">
           <h3>Events on {selectedDate.toDateString()}</h3>
-          <ul>
-            {getEventsForDate(selectedDate).map((event, index) => (
-              <li key={index} style={{ color: categories[event.category] }}>
-                {event.description} ({event.recurrence})
-                <button onClick={() => handleDeleteEvent(selectedDate, index)}>
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
           <input
             type="text"
             value={newEvent}
@@ -296,13 +282,29 @@ const Calendar = () => {
             placeholder="Reminder (hours)"
           />
           <button onClick={handleAddEvent}>Add Event</button>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search Events"
+          />
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            <option value="work">Work</option>
+            <option value="personal">Personal</option>
+            <option value="holiday">Holiday</option>
+            <option value="birthday">Birthday</option>
+          </select>
         </div>
       )}
       <Modal
         isOpen={modalIsOpen}
         onRequestClose={closeModal}
         contentLabel="Event Details"
-        className={`modal ${darkMode ? "dark" : ""}`}
+        className="modal"
         overlayClassName="overlay"
       >
         <h2>{currentEvent?.description}</h2>
