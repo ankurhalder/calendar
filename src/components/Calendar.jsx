@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Modal from "react-modal";
 import "./Calendar.css";
 
 const Calendar = () => {
@@ -8,17 +9,15 @@ const Calendar = () => {
   const [newEvent, setNewEvent] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const [category, setCategory] = useState("work");
-  const [reminderTime, setReminderTime] = useState("");
+  const [reminder, setReminder] = useState("");
   const [view, setView] = useState("month");
+  const [darkMode, setDarkMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [startOfWeek, setStartOfWeek] = useState("Sunday");
-  const [timeFormat, setTimeFormat] = useState("24-hour");
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState(null);
 
-  const daysOfWeek =
-    startOfWeek === "Monday"
-      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const categories = {
     work: "blue",
@@ -42,8 +41,14 @@ const Calendar = () => {
     const now = new Date();
     Object.keys(events).forEach((dateKey) => {
       events[dateKey].forEach((event) => {
-        if (event.reminder && new Date(event.reminder) <= now) {
-          alert(`Reminder: ${event.description} is due now!`);
+        if (event.reminder) {
+          const eventDate = new Date(dateKey);
+          eventDate.setHours(
+            eventDate.getHours() - parseInt(event.reminder, 10)
+          );
+          if (now >= eventDate && now < new Date(eventDate.getTime() + 60000)) {
+            alert(`Reminder: ${event.description} is coming up!`);
+          }
         }
       });
     });
@@ -81,7 +86,7 @@ const Calendar = () => {
     const calendarDays = [];
     let day = firstDayOfMonth;
 
-    while (day.getDay() !== daysOfWeek.indexOf(startOfWeek)) {
+    while (day.getDay() !== 0) {
       day = new Date(day.setDate(day.getDate() - 1));
       calendarDays.unshift(null);
     }
@@ -118,34 +123,11 @@ const Calendar = () => {
   const getEventsForDate = (date) => {
     const dateKey = date.toDateString();
     let dateEvents = events[dateKey] || [];
-    if (searchTerm) {
-      dateEvents = dateEvents.filter((event) =>
-        event.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (filterCategory !== "all") {
-      dateEvents = dateEvents.filter(
-        (event) => event.category === filterCategory
-      );
-    }
-    Object.keys(events).forEach((key) => {
-      events[key].forEach((event) => {
-        if (event.recurrence !== "none") {
-          if (
-            event.recurrence === "daily" ||
-            (event.recurrence === "weekly" &&
-              new Date(key).getDay() === date.getDay()) ||
-            (event.recurrence === "monthly" &&
-              new Date(key).getDate() === date.getDate()) ||
-            (event.recurrence === "yearly" &&
-              new Date(key).getMonth() === date.getMonth() &&
-              new Date(key).getDate() === date.getDate())
-          ) {
-            dateEvents.push(event);
-          }
-        }
-      });
-    });
+    dateEvents = dateEvents.filter(
+      (event) =>
+        event.description.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (filterCategory === "all" || event.category === filterCategory)
+    );
     return dateEvents;
   };
 
@@ -160,12 +142,12 @@ const Calendar = () => {
       ...events,
       [dateKey]: [
         ...(events[dateKey] || []),
-        { description: newEvent, recurrence, category, reminder: reminderTime },
+        { description: newEvent, recurrence, category, reminder },
       ],
     };
     setEvents(updatedEvents);
     setNewEvent("");
-    setReminderTime("");
+    setReminder("");
   };
 
   const handleDeleteEvent = (day, index) => {
@@ -178,21 +160,17 @@ const Calendar = () => {
     setEvents(updatedEvents);
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
   };
 
-  const handleFilterChange = (e) => {
-    setFilterCategory(e.target.value);
+  const openModal = (event) => {
+    setCurrentEvent(event);
+    setModalIsOpen(true);
   };
 
-  const handleShareEvent = (event) => {
-    const eventDetails = `Event: ${
-      event.description
-    }\nDate: ${selectedDate.toDateString()}\nReminder: ${
-      event.reminder ? new Date(event.reminder).toLocaleTimeString() : "None"
-    }`;
-    alert(eventDetails);
+  const closeModal = () => {
+    setModalIsOpen(false);
   };
 
   const renderCalendarGrid = () => {
@@ -204,7 +182,7 @@ const Calendar = () => {
         : generateDayView();
 
     return (
-      <div className="calendar-grid">
+      <div className={`calendar-grid ${darkMode ? "dark" : ""}`}>
         {view === "month" &&
           daysOfWeek.map((day) => (
             <div key={day} className="day-of-week">
@@ -227,6 +205,7 @@ const Calendar = () => {
                   className="event-indicator"
                   style={{ backgroundColor: categories[event.category] }}
                   title={event.description}
+                  onClick={() => openModal(event)}
                 ></div>
               ))}
           </div>
@@ -236,7 +215,7 @@ const Calendar = () => {
   };
 
   return (
-    <div className="calendar-container">
+    <div className={`calendar-container ${darkMode ? "dark" : ""}`}>
       <div className="calendar-header">
         <button onClick={prevYear}>&lt;&lt;</button>
         <button onClick={prevMonth}>&lt;</button>
@@ -246,27 +225,31 @@ const Calendar = () => {
         </div>
         <button onClick={nextMonth}>&gt;</button>
         <button onClick={nextYear}>&gt;&gt;</button>
+        <button onClick={toggleDarkMode}>
+          {darkMode ? "Light Mode" : "Dark Mode"}
+        </button>
       </div>
       <div className="view-switcher">
         <button onClick={() => changeView("month")}>Month</button>
         <button onClick={() => changeView("week")}>Week</button>
         <button onClick={() => changeView("day")}>Day</button>
       </div>
-      <div className="search-filter">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          placeholder="Search events"
-        />
-        <select value={filterCategory} onChange={handleFilterChange}>
-          <option value="all">All Categories</option>
-          <option value="work">Work</option>
-          <option value="personal">Personal</option>
-          <option value="holiday">Holiday</option>
-          <option value="birthday">Birthday</option>
-        </select>
-      </div>
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search events"
+      />
+      <select
+        value={filterCategory}
+        onChange={(e) => setFilterCategory(e.target.value)}
+      >
+        <option value="all">All Categories</option>
+        <option value="work">Work</option>
+        <option value="personal">Personal</option>
+        <option value="holiday">Holiday</option>
+        <option value="birthday">Birthday</option>
+      </select>
       {renderCalendarGrid()}
       {selectedDate && (
         <div className="event-form">
@@ -275,15 +258,9 @@ const Calendar = () => {
             {getEventsForDate(selectedDate).map((event, index) => (
               <li key={index} style={{ color: categories[event.category] }}>
                 {event.description} ({event.recurrence})
-                {event.reminder && (
-                  <span className="reminder-time">
-                    Reminder: {new Date(event.reminder).toLocaleTimeString()}
-                  </span>
-                )}
                 <button onClick={() => handleDeleteEvent(selectedDate, index)}>
                   Delete
                 </button>
-                <button onClick={() => handleShareEvent(event)}>Share</button>
               </li>
             ))}
           </ul>
@@ -313,36 +290,37 @@ const Calendar = () => {
             <option value="birthday">Birthday</option>
           </select>
           <input
-            type="datetime-local"
-            value={reminderTime}
-            onChange={(e) => setReminderTime(e.target.value)}
-            placeholder="Set reminder"
+            type="number"
+            value={reminder}
+            onChange={(e) => setReminder(e.target.value)}
+            placeholder="Reminder (hours)"
           />
           <button onClick={handleAddEvent}>Add Event</button>
         </div>
       )}
-      <div className="settings">
-        <label>
-          Start of Week:
-          <select
-            value={startOfWeek}
-            onChange={(e) => setStartOfWeek(e.target.value)}
-          >
-            <option value="Sunday">Sunday</option>
-            <option value="Monday">Monday</option>
-          </select>
-        </label>
-        <label>
-          Time Format:
-          <select
-            value={timeFormat}
-            onChange={(e) => setTimeFormat(e.target.value)}
-          >
-            <option value="24-hour">24-hour</option>
-            <option value="12-hour">12-hour</option>
-          </select>
-        </label>
-      </div>
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={closeModal}
+        contentLabel="Event Details"
+        className={`modal ${darkMode ? "dark" : ""}`}
+        overlayClassName="overlay"
+      >
+        <h2>{currentEvent?.description}</h2>
+        <p>Recurrence: {currentEvent?.recurrence}</p>
+        <p>Category: {currentEvent?.category}</p>
+        <p>Reminder: {currentEvent?.reminder} hours</p>
+        <button
+          onClick={() =>
+            handleDeleteEvent(
+              selectedDate,
+              events[selectedDate.toDateString()].indexOf(currentEvent)
+            )
+          }
+        >
+          Delete
+        </button>
+        <button onClick={closeModal}>Close</button>
+      </Modal>
     </div>
   );
 };
